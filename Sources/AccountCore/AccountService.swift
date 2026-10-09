@@ -99,7 +99,7 @@ public actor AccountService {
         guard target.identity.matches(try Identity.credential(targetCredential)) else { throw AccountError.message("Die Zielanmeldung wurde während der Prüfung verändert.") }
         var originalCredential = try Data(contentsOf:store.activeAuth)
         let originalRegistry = try Data(contentsOf:store.registryURL)
-        await progress("Codex wird regulär beendet…")
+        await progress("Codex wird erzwungen beendet…")
         var closed = false; var installed = false; var committed = false
         do {
             closed = try await desktop.close()

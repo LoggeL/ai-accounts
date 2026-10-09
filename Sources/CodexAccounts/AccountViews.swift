@@ -77,7 +77,7 @@ struct AccountsPanel: View {
         .sheet(isPresented: $form.showingAdd) { addSheet }
         .alert("Zu \(form.switchCandidate?.displayName ?? "diesem Konto") wechseln?", isPresented: Binding(get: { form.switchCandidate != nil }, set: { if !$0 { form.switchCandidate = nil } })) {
             Button("Abbrechen", role: .cancel) { form.switchCandidate = nil }
-            Button(model.demoMode || form.switchCandidate?.provider == .claude ? "Wechseln" : "Codex schließen und wechseln", role: model.demoMode ? nil : .destructive) {
+            Button(model.demoMode || form.switchCandidate?.provider == .claude ? "Wechseln" : "Codex sofort beenden und wechseln", role: model.demoMode ? nil : .destructive) {
                 if let account = form.switchCandidate { model.switchAccount(account) }
                 form.switchCandidate = nil
             }
@@ -85,7 +85,7 @@ struct AccountsPanel: View {
             Text(model.demoMode ? "Im Demomodus ändert sich nur das angezeigte Beispielkonto." :
                 (form.switchCandidate?.provider == .claude ?
                  "Schließe laufende Claude-Code-Sitzungen zuerst. Neue Sitzungen verwenden dieses Konto ohne erneute Browser-Anmeldung. Der Gesprächsverlauf bleibt erhalten. Claude Desktop meldet sich separat an." :
-                 "Codex wird geschlossen und neu geöffnet. Laufende Aufgaben werden unterbrochen. Speichere offene Arbeit vor dem Wechsel."))
+                 "Codex wird sofort erzwungen beendet und neu geöffnet. Laufende Aufgaben werden unterbrochen. Speichere offene Arbeit vor dem Wechsel."))
         }
         .alert("Gespeichertes Konto entfernen?", isPresented: Binding(get: { form.removeCandidate != nil }, set: { if !$0 { form.removeCandidate = nil } })) {
             Button("Abbrechen", role: .cancel) { form.removeCandidate = nil }

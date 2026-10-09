@@ -24,7 +24,7 @@ Das Menüleistenelement bleibt nach dem Schließen der Übersicht und des Verwal
 
 **Konten verwalten** öffnet ein dauerhaftes Fenster. **Konto hinzufügen** startet die Browser-Anmeldung für ein benanntes Profil. Eine laufende Anmeldung kann abgebrochen werden. Ein inaktives Konto kann erneut angemeldet oder aus der Liste entfernt werden. Die geschützte Profildatei bleibt beim Entfernen erhalten; das aktive Konto lässt sich nicht entfernen.
 
-**Wechseln** verlangt eine Bestätigung. Codex wird regulär geschlossen, die Zielanmeldung geprüft und Codex anschließend neu geöffnet. Laufende Aufgaben werden dabei unterbrochen. Bleibt Codex nach 30 Sekunden noch geöffnet, wird die aktive Anmeldung nicht verändert. Scheitert nur der abschließende Start, steht **Codex öffnen** auch separat bereit.
+**Wechseln** verlangt eine Bestätigung. Nach der Prüfung der Zielanmeldung werden Codex und seine erfassten Unterprozesse sofort erzwungen beendet. Laufende Aufgaben werden dabei unterbrochen. Die Anmeldung wird erst ausgetauscht, wenn das Beenden bestätigt ist. Codex wird anschließend neu geöffnet. Scheitert nur der abschließende Start, steht **Codex öffnen** auch separat bereit.
 
 ## Lokale Kontodaten
 

@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.3.1
+
+- Der bestätigte Codex-Kontowechsel beendet Codex und seine erfassten Unterprozesse sofort erzwungen. Beenden-Dialoge und blockierte Aufgaben halten den Wechsel nicht mehr auf.
+- Die Anmeldung wird erst ausgetauscht, wenn die erfassten Prozesse beendet sind. Die Bestätigung und die Fortschrittsanzeige benennen das erzwungene Beenden ausdrücklich.
+
 ## 1.3.0
 
 - Eigener Claude-Reiter mit 5-Stunden- und Wochenlimit, Reset-Zeiten sowie Defizit-/Reserve-Anzeige.

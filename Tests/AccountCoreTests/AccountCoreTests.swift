@@ -282,7 +282,7 @@ struct AccountCoreTests {
         XCTAssertTrue(exited)
     }
 
-    @Test func testNativeDelayedQuitAndExactBundleRelaunch() async throws {
+    @Test func testNativeForcedQuitAndExactBundleRelaunch() async throws {
         let root = testTemporaryDirectory.appendingPathComponent("codex-konten-native-"+UUID().uuidString)
         defer { try? FileManager.default.removeItem(at:root) }
         let app = root.appendingPathComponent("Launch Fixture.app")
@@ -291,10 +291,26 @@ struct AccountCoreTests {
         let source = root.appendingPathComponent("Fixture.swift")
         let program = """
         import AppKit
+        import Darwin
+        let marker = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent().appendingPathComponent("workers.txt")
+        if CommandLine.arguments.contains("--worker") {
+            let leaf = Process()
+            leaf.executableURL = URL(fileURLWithPath: "/bin/sleep")
+            leaf.arguments = ["60"]
+            try leaf.run()
+            try Data("\\(getpid()),\\(leaf.processIdentifier)".utf8).write(to: marker)
+            sleep(60)
+            exit(0)
+        }
         final class Delegate: NSObject, NSApplicationDelegate {
+            let worker = Process()
+            func applicationDidFinishLaunching(_ notification: Notification) {
+                worker.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
+                worker.arguments = ["--worker"]
+                try! worker.run()
+            }
             func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { sender.reply(toApplicationShouldTerminate: true) }
-                return .terminateLater
+                return .terminateCancel
             }
         }
         let app = NSApplication.shared
@@ -309,18 +325,42 @@ struct AccountCoreTests {
         let plist:[String:Any] = ["CFBundleIdentifier":identifier,"CFBundleExecutable":"LaunchFixture","CFBundlePackageType":"APPL","CFBundleName":"Launch Fixture","LSUIElement":true]
         try PropertyListSerialization.data(fromPropertyList:plist,format:.xml,options:0).write(to:app.appendingPathComponent("Contents/Info.plist"))
         let desktop = LiveDesktop(bundleID:identifier,installed:[app])
+        let unrelated = Process(); unrelated.executableURL = URL(fileURLWithPath:"/bin/sleep"); unrelated.arguments = ["60"]; try unrelated.run()
+        defer { if unrelated.isRunning { unrelated.terminate() }; unrelated.waitUntilExit() }
+        defer {
+            for (app, _) in LiveDesktop.runningApps(bundleID:identifier) {
+                if let identity = LiveDesktop.ProcessIdentity(pid:app.processIdentifier),
+                   let tree = try? LiveDesktop.processTree(roots:[identity]) {
+                    for process in tree { try? process.forceTerminate() }
+                }
+            }
+        }
         try await desktop.open()
-        let first = NSRunningApplication.runningApplications(withBundleIdentifier:identifier).first
-        XCTAssertTrue(first != nil)
+        let first = try #require(LiveDesktop.runningApps(bundleID:identifier).first?.0)
+        let marker = macos.appendingPathComponent("workers.txt")
+        for _ in 0..<40 {
+            if FileManager.default.fileExists(atPath:marker.path) { break }
+            try await Task.sleep(for:.milliseconds(50))
+        }
+        let workerPIDs = try String(contentsOf:marker,encoding:.utf8).split(separator:",").compactMap { Int32($0) }
+        let workers = workerPIDs.compactMap(LiveDesktop.ProcessIdentity.init(pid:))
+        XCTAssertEqual(workers.count,2)
         let started = Date()
         XCTAssertTrue(try await desktop.close())
-        XCTAssertTrue(Date().timeIntervalSince(started) >= 0.8)
-        XCTAssertFalse(LiveDesktop.ProcessIdentity(pid:first!.processIdentifier)?.isAlive ?? false)
+        XCTAssertTrue(Date().timeIntervalSince(started) < 3)
+        XCTAssertFalse(LiveDesktop.ProcessIdentity(pid:first.processIdentifier)?.isAlive ?? false)
+        XCTAssertTrue(workers.allSatisfy { !$0.isAlive })
+        XCTAssertTrue(unrelated.isRunning)
+        XCTAssertFalse(try await desktop.close())
+        try FileManager.default.removeItem(at:marker)
         try await desktop.open()
-        let second = NSRunningApplication.runningApplications(withBundleIdentifier:identifier).first(where:{ !$0.isTerminated })
-        XCTAssertTrue(second != nil)
-        XCTAssertFalse(second?.processIdentifier == first?.processIdentifier)
-        second?.forceTerminate()
+        let second = try #require(LiveDesktop.runningApps(bundleID:identifier).first?.0)
+        XCTAssertFalse(second.processIdentifier == first.processIdentifier)
+        for _ in 0..<40 {
+            if FileManager.default.fileExists(atPath:marker.path) { break }
+            try await Task.sleep(for:.milliseconds(50))
+        }
+        XCTAssertTrue(try await desktop.close())
     }
 }
 

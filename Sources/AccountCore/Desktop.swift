@@ -91,13 +91,15 @@ struct LiveDesktop: Desktop {
 
     struct ProcessIdentity: Sendable {
         let pid: pid_t
+        let parentPID: pid_t
         let startSeconds: UInt64
         let startMicros: UInt64
         init?(pid: pid_t) {
             guard pid > 0 else { return nil }
             var info = proc_bsdinfo()
             guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, Int32(MemoryLayout<proc_bsdinfo>.size)) == MemoryLayout<proc_bsdinfo>.size else { return nil }
-            self.pid = pid; startSeconds = info.pbi_start_tvsec; startMicros = info.pbi_start_tvusec
+            self.pid = pid; parentPID = pid_t(info.pbi_ppid)
+            startSeconds = info.pbi_start_tvsec; startMicros = info.pbi_start_tvusec
         }
         var isAlive: Bool {
             guard let current = Self(pid: pid) else { return kill(pid, 0) == 0 || errno == EPERM }
@@ -106,6 +108,37 @@ struct LiveDesktop: Desktop {
                info.pbi_status == SZOMB { return false }
             return current.startSeconds == startSeconds && current.startMicros == startMicros
         }
+
+        func forceTerminate() throws {
+            guard let current = Self(pid: pid) else {
+                if kill(pid, 0) == -1 && errno == ESRCH { return }
+                throw AccountError.message("Codex-Prozessidentität vor dem erzwungenen Beenden nicht lesbar. Anmeldung bleibt unverändert.")
+            }
+            // A recycled PID must never receive a signal intended for the original process.
+            guard current.startSeconds == startSeconds, current.startMicros == startMicros else { return }
+            guard kill(pid, SIGKILL) == 0 || errno == ESRCH else {
+                throw AccountError.message("Codex-Prozess \(pid) konnte nicht erzwungen beendet werden. Anmeldung bleibt unverändert.")
+            }
+        }
+    }
+
+    static func processTree(roots: [ProcessIdentity]) throws -> [ProcessIdentity] {
+        var pids = [pid_t](repeating: 0, count: 8192)
+        let bytes = proc_listpids(UInt32(PROC_ALL_PIDS), 0, &pids, Int32(pids.count * MemoryLayout<pid_t>.size))
+        guard bytes > 0, bytes < pids.count * MemoryLayout<pid_t>.size else {
+            throw AccountError.message("Codex-Unterprozesse konnten nicht vollständig erfasst werden. Anmeldung bleibt unverändert.")
+        }
+        let processes = pids.prefix(Int(bytes) / MemoryLayout<pid_t>.size).compactMap(ProcessIdentity.init(pid:))
+        var tree = roots
+        var included = Set(roots.map(\.pid))
+        var added = true
+        while added {
+            added = false
+            for process in processes where !included.contains(process.pid) && included.contains(process.parentPID) {
+                included.insert(process.pid); tree.append(process); added = true
+            }
+        }
+        return tree
     }
 
     static func waitForExit(processes: [ProcessIdentity], attempts: Int, wait: @Sendable (Duration) async -> Void) async -> Bool {
@@ -156,15 +189,16 @@ struct LiveDesktop: Desktop {
         let pids = apps.map(\.processIdentifier)
         let originals = pids.compactMap(ProcessIdentity.init(pid:))
         guard originals.count == pids.count else { throw AccountError.message("Codex-Prozessidentität vor dem Beenden nicht lesbar. Anmeldung bleibt unverändert.") }
-        let accepted = await MainActor.run { apps.allSatisfy { $0.terminate() } }
-        guard accepted else { throw AccountError.message("Codex hat das Beenden abgelehnt. Bitte laufende Aufgaben beenden und erneut versuchen.") }
+        let processes = try Self.processTree(roots: originals)
+        // Stop the app first so it cannot launch replacement workers, then clean up its captured descendants.
+        for process in processes { try process.forceTerminate() }
         let exited = await Task.detached {
-            await Self.waitForExit(processes: originals, attempts: 120) { duration in
+            await Self.waitForExit(processes: processes, attempts: 20) { duration in
                 try? await Task.sleep(for: duration)
             }
         }.value
-        if exited { return true }
-        throw AccountError.message("Codex ist nach 30 Sekunden noch geöffnet (Prozess \(pids.map(String.init).joined(separator: ", "))). Die Anmeldung wurde nicht verändert. Bitte laufende Aufgaben oder den Beenden-Dialog in Codex abschließen und erneut wechseln. Falls Codex danach geschlossen ist, mit 'Codex öffnen' starten.")
+        if exited && Self.runningApps(bundleID: bundleID).isEmpty { return true }
+        throw AccountError.message("Codex ist nach dem erzwungenen Beenden noch geöffnet. Die Anmeldung wurde nicht verändert. Bitte erneut wechseln oder mit 'Codex öffnen' starten.")
     }
 
     func open() async throws {
