@@ -54,6 +54,78 @@ struct Fixture {
     func clean() { try? FileManager.default.removeItem(at:root) }
 }
 struct AccountCoreTests {
+    @Test func testPaceDeficitAndProjection() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let pace = UsagePace.calculate(remaining: 50, reset: now.addingTimeInterval(4 * 3600),
+            windowMinutes: 600, fetchedAt: now, now: now)
+        XCTAssertEqual(pace?.expectedRemaining, 40)
+        XCTAssertEqual(pace?.deficitPoints, -10)
+        XCTAssertEqual(pace?.projectedExhaustion, now.addingTimeInterval(6 * 3600))
+        XCTAssertEqual(pace?.reachesReset, true)
+        let fast = UsagePace.calculate(remaining: 10, reset: now.addingTimeInterval(4 * 3600),
+            windowMinutes: 600, fetchedAt: now, now: now)
+        XCTAssertEqual(fast?.deficitPoints, 30)
+        XCTAssertEqual(fast?.reachesReset, false)
+        XCTAssertEqual(fast?.projectedExhaustion, now.addingTimeInterval(40 * 60))
+    }
+
+    @Test func testPaceMarkerMovesButProjectionDoesNotDriftBetweenFetches() {
+        let fetchedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let reset = fetchedAt.addingTimeInterval(4 * 3600)
+        let initial = UsagePace.calculate(remaining: 10, reset: reset, windowMinutes: 600,
+            fetchedAt: fetchedAt, now: fetchedAt)
+        let later = UsagePace.calculate(remaining: 10, reset: reset, windowMinutes: 600,
+            fetchedAt: fetchedAt, now: fetchedAt.addingTimeInterval(5 * 60))
+        XCTAssertEqual(initial?.projectedExhaustion, later?.projectedExhaustion)
+        XCTAssertEqual(initial?.expectedRemaining, 40)
+        XCTAssertEqual(later?.expectedRemaining, 39.166666666666664)
+    }
+
+    @Test func testPaceRejectsUnknownOrUnreliableTiming() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        func pace(_ remaining: Double = 50, _ resetSeconds: TimeInterval = 24000,
+                  _ minutes: Double? = 600, _ age: TimeInterval = 0) -> UsagePace? {
+            UsagePace.calculate(remaining: remaining, reset: now.addingTimeInterval(resetSeconds),
+                windowMinutes: minutes, fetchedAt: now.addingTimeInterval(-age), now: now)
+        }
+        XCTAssertTrue(pace(50, 24000, nil) == nil)
+        XCTAssertTrue(pace(50, -1) == nil)
+        XCTAssertTrue(pace(50, 40000) == nil)
+        XCTAssertTrue(pace(50, 35500) == nil) // Less than 3% of the window elapsed.
+        XCTAssertTrue(pace(50, 24000, 600, 901) == nil)
+        XCTAssertTrue(pace(-1) == nil)
+        XCTAssertTrue(pace(101) == nil)
+    }
+
+    @Test func testPaceAtZeroAndFullUsage() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let reset = now.addingTimeInterval(4 * 3600)
+        let unused = UsagePace.calculate(remaining: 100, reset: reset, windowMinutes: 600, fetchedAt: now, now: now)
+        XCTAssertEqual(unused?.deficitPoints, -60)
+        XCTAssertTrue(unused?.projectedExhaustion == nil)
+        XCTAssertEqual(unused?.reachesReset, true)
+        let exhausted = UsagePace.calculate(remaining: 0, reset: reset, windowMinutes: 600, fetchedAt: now, now: now)
+        XCTAssertEqual(exhausted?.deficitPoints, 40)
+        XCTAssertEqual(exhausted?.projectedExhaustion, now)
+        XCTAssertEqual(exhausted?.reachesReset, false)
+    }
+
+    @Test func testRateLimitDurationAndOldCacheCompatibility() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let windows: J = .object(["rateLimitsByLimitId": .object(["codex": .object([
+            "primary": .object(["windowDurationMins": .number(300), "usedPercent": .number(7), "resetsAt": .number(now.timeIntervalSince1970 + 3000)]),
+            "secondary": .object(["windowDurationMins": .number(10080), "usedPercent": .number(50), "resetsAt": .number(now.timeIntervalSince1970 + 300000)])
+        ])])])
+        let parsed = RateLimitParser.parse(windows, fetchedAt: now)
+        XCTAssertEqual(parsed.fiveHourRemaining, 93)
+        XCTAssertEqual(parsed.fiveHourWindowMinutes, 300)
+        XCTAssertEqual(parsed.weeklyRemaining, 50)
+        XCTAssertEqual(parsed.weeklyWindowMinutes, 10080)
+        let decoded = try JSONDecoder().decode(AccountUsage.self, from: Data("{\"weeklyRemaining\":50,\"fetchedAt\":0}".utf8))
+        XCTAssertEqual(decoded.weeklyRemaining, 50)
+        XCTAssertTrue(decoded.weeklyWindowMinutes == nil)
+    }
+
     @Test func testSameEmailDifferentWorkspaceDoesNotMatch() { XCTAssertFalse(Identity(accountID:"a",email:"same@example.test").matches(Identity(accountID:"b",email:"same@example.test"))) }
     @Test func testSnapshotUsesActualAuthInsteadOfStaleRegistry() async throws {
         let f = try Fixture(); defer { f.clean() }; let s = AccountService(store:f.store,client:FakeClient(f.store),desktop:FakeDesktop())

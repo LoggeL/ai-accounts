@@ -29,9 +29,15 @@ struct AccountsPanel: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            Picker("Anbieter", selection: $model.selectedProvider) {
+                ForEach(AccountProvider.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 22).padding(.bottom, 8)
+            .disabled(model.busy || updates.isInstalling)
             ScrollView {
                 VStack(spacing: 0) {
-                    if let notice = model.snapshot?.notice, !notice.isEmpty {
+                    if let notice = model.displaySnapshot?.notice, !notice.isEmpty {
                         noticeView(notice)
                     }
                     if model.accounts.isEmpty {
@@ -64,15 +70,22 @@ struct AccountsPanel: View {
             model.bindUpdateInstall { updates.isInstalling }
             model.load()
         }
+        .onChange(of: model.selectedProvider) {
+            form.expandedErrorID = nil
+            model.providerChanged()
+        }
         .sheet(isPresented: $form.showingAdd) { addSheet }
         .alert("Zu \(form.switchCandidate?.displayName ?? "diesem Konto") wechseln?", isPresented: Binding(get: { form.switchCandidate != nil }, set: { if !$0 { form.switchCandidate = nil } })) {
             Button("Abbrechen", role: .cancel) { form.switchCandidate = nil }
-            Button(model.demoMode ? "Wechseln" : "Codex schließen und wechseln", role: model.demoMode ? nil : .destructive) {
+            Button(model.demoMode || form.switchCandidate?.provider == .claude ? "Wechseln" : "Codex schließen und wechseln", role: model.demoMode ? nil : .destructive) {
                 if let account = form.switchCandidate { model.switchAccount(account) }
                 form.switchCandidate = nil
             }
         } message: {
-            Text(model.demoMode ? "Im Demomodus ändert sich nur das angezeigte Beispielkonto." : "Codex wird geschlossen und neu geöffnet. Laufende Aufgaben werden unterbrochen. Speichere offene Arbeit vor dem Wechsel.")
+            Text(model.demoMode ? "Im Demomodus ändert sich nur das angezeigte Beispielkonto." :
+                (form.switchCandidate?.provider == .claude ?
+                 "Schließe laufende Claude-Code-Sitzungen zuerst. Neue Sitzungen verwenden dieses Konto ohne erneute Browser-Anmeldung. Der Gesprächsverlauf bleibt erhalten. Claude Desktop meldet sich separat an." :
+                 "Codex wird geschlossen und neu geöffnet. Laufende Aufgaben werden unterbrochen. Speichere offene Arbeit vor dem Wechsel."))
         }
         .alert("Gespeichertes Konto entfernen?", isPresented: Binding(get: { form.removeCandidate != nil }, set: { if !$0 { form.removeCandidate = nil } })) {
             Button("Abbrechen", role: .cancel) { form.removeCandidate = nil }
@@ -81,7 +94,7 @@ struct AccountsPanel: View {
                 form.removeCandidate = nil
             }
         } message: {
-            Text("\(form.removeCandidate?.displayName ?? "Das Konto") verschwindet aus der Liste. Die aktive Codex-Anmeldung bleibt bestehen.")
+            Text("\(form.removeCandidate?.displayName ?? "Das Konto") verschwindet aus der Liste. Das geschützte Profil bleibt erhalten.")
         }
     }
 
@@ -96,7 +109,7 @@ struct AccountsPanel: View {
                     .foregroundStyle(.secondary)
                     .accessibilityElement(children: .combine)
                 } else {
-                    Text(model.snapshot == nil ? "Konto wird geprüft …" : (model.snapshot?.currentAccountLabel.map { "Aktiv: \($0)" } ?? "Kein aktives Konto erkannt"))
+                    Text(model.displaySnapshot == nil ? "Konto wird geprüft …" : (model.displaySnapshot?.currentAccountLabel.map { "Aktiv: \($0)" } ?? "Kein aktives Konto erkannt"))
                         .font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
@@ -125,7 +138,7 @@ struct AccountsPanel: View {
                     Text("Aktiv")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.green)
-                        .accessibilityLabel("Aktives Codex-Konto")
+                        .accessibilityLabel("Aktives \(account.provider.title)-Konto")
                 } else {
                     Button { form.switchCandidate = account } label: {
                         Text("Wechseln")
@@ -140,7 +153,11 @@ struct AccountsPanel: View {
                 if manage {
                     Menu {
                         if let error = account.error {
-                            Button("Erneut anmelden …") { beginReauth(account) }
+                            if error.contains("Schlüsselbund") {
+                                Button("Schlüsselbund verbinden …") { model.refresh() }
+                            } else {
+                                Button("Erneut anmelden …") { beginReauth(account) }
+                            }
                             Button("Fehler anzeigen") { form.expandedErrorID = account.id }
                             Text(error)
                         }
@@ -158,7 +175,9 @@ struct AccountsPanel: View {
             if !available.isEmpty {
                 VStack(spacing: 12) {
                     ForEach(available) { limit in
-                        quotaLine(limit)
+                        TimelineView(.periodic(from: .now, by: 60)) { timeline in
+                            quotaLine(limit, now: timeline.date)
+                        }
                     }
                 }
                 .padding(.top, 17)
@@ -188,22 +207,25 @@ struct AccountsPanel: View {
         let remaining: Double
         let reset: Date?
         let fetchedAt: Date
+        let windowMinutes: Double?
     }
 
     private func visibleLimits(_ account: SavedAccountView) -> [VisibleLimit] {
         guard let usage = account.usage else { return [] }
         var limits: [VisibleLimit] = []
         if let value = usage.fiveHourRemaining, value.isFinite {
-            limits.append(VisibleLimit(id: "5h", title: "5 Stunden", remaining: value, reset: usage.fiveHourReset, fetchedAt: usage.fetchedAt))
+            limits.append(VisibleLimit(id: "5h", title: "5 Stunden", remaining: value, reset: usage.fiveHourReset, fetchedAt: usage.fetchedAt, windowMinutes: usage.fiveHourWindowMinutes))
         }
         if let value = usage.weeklyRemaining, value.isFinite {
-            limits.append(VisibleLimit(id: "week", title: "Woche", remaining: value, reset: usage.weeklyReset, fetchedAt: usage.fetchedAt))
+            limits.append(VisibleLimit(id: "week", title: "Woche", remaining: value, reset: usage.weeklyReset, fetchedAt: usage.fetchedAt, windowMinutes: usage.weeklyWindowMinutes))
         }
         return limits
     }
 
-    private func quotaLine(_ limit: VisibleLimit) -> some View {
+    private func quotaLine(_ limit: VisibleLimit, now: Date) -> some View {
         let value = min(100, max(0, limit.remaining))
+        let pace = UsagePace.calculate(remaining: limit.remaining, reset: limit.reset,
+            windowMinutes: limit.windowMinutes, fetchedAt: limit.fetchedAt, now: now)
         return VStack(spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(limit.title).font(.system(size: 12)).foregroundStyle(.secondary)
@@ -211,17 +233,67 @@ struct AccountsPanel: View {
                 Text("\(Int(value.rounded())) % frei")
                     .font(.system(size: 12, weight: .medium).monospacedDigit())
             }
-            ProgressView(value: value, total: 100)
-                .tint(.blue)
-                .accessibilityLabel("\(limit.title): \(Int(value.rounded())) Prozent übrig")
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.blue.opacity(0.18)).frame(height: 7)
+                    Capsule().fill(Color.blue).frame(width: geometry.size.width * value / 100, height: 7)
+                    if let pace {
+                        Rectangle().fill(.primary)
+                            .frame(width: 2, height: 12)
+                            .offset(x: max(0, min(geometry.size.width - 2,
+                                                 geometry.size.width * pace.expectedRemaining / 100 - 1)))
+                    }
+                }
+                .frame(maxHeight: .infinity)
+            }
+            .frame(height: 12)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(limit.title): \(Int(value.rounded())) Prozent frei" +
+                (pace.map { ", Soll \(Int($0.expectedRemaining.rounded())) Prozent frei" } ?? ""))
+            if let pace {
+                HStack(spacing: 5) {
+                    Text(paceLabel(pace))
+                        .foregroundStyle(pace.deficitPoints > 0.05 ? Color.orange :
+                            (pace.deficitPoints < -0.05 ? Color.green : Color.secondary))
+                    Spacer(minLength: 4)
+                    Text("Soll: \(Int(pace.expectedRemaining.rounded())) % frei")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.system(size: 11, weight: .medium).monospacedDigit())
+                .help("Soll bei gleichmäßigem Verbrauch bis zum Reset. PP = Prozentpunkte. Reichweite aus dem bisherigen Durchschnitt.")
+                if pace.reachesReset {
+                    Text("Reicht vsl. bis Reset")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else if value == 0 {
+                    Text("Kontingent aufgebraucht")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let projected = pace.projectedExhaustion {
+                    Text(projected <= now ? "Prognose erreicht · aktualisieren" :
+                        "Vsl. leer " + relativeReset(projected, now: now))
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                Text("Prognose nicht verfügbar")
+                    .font(.system(size: 11)).foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if let reset = limit.reset {
-                Text("Reset " + relativeReset(reset))
+                Text("Reset " + relativeReset(reset, now: now))
                 .font(.system(size: 12)).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .help("Rücksetzung: \(germanDate(reset))")
             }
         }
-        .help("Stand: \(germanDate(limit.fetchedAt))" + (Date().timeIntervalSince(limit.fetchedAt) > 900 ? ", veraltet" : ""))
+        .help("Stand: \(germanDate(limit.fetchedAt))" + (now.timeIntervalSince(limit.fetchedAt) > 900 ? ", veraltet" : ""))
+    }
+
+    private func paceLabel(_ pace: UsagePace) -> String {
+        let amount = abs(pace.deficitPoints).formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: "de_DE")))
+        if abs(pace.deficitPoints) < 0.05 { return "Im Soll" }
+        return "\(amount) PP " + (pace.deficitPoints > 0 ? "Defizit" : "Reserve")
     }
 
     private func errorLine(_ error: String, account: SavedAccountView) -> some View {
@@ -245,8 +317,13 @@ struct AccountsPanel: View {
             .foregroundStyle(.orange)
             if form.expandedErrorID == account.id {
                 Text(error).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Button("Erneut anmelden …") { beginReauth(account) }
-                    .font(.caption).disabled(model.busy || updates.isInstalling)
+                if error.contains("Schlüsselbund") {
+                    Button("Schlüsselbund verbinden …") { model.refresh() }
+                        .font(.caption).disabled(model.busy || updates.isInstalling)
+                } else {
+                    Button("Erneut anmelden …") { beginReauth(account) }
+                        .font(.caption).disabled(model.busy || updates.isInstalling)
+                }
             }
         }
     }
@@ -325,7 +402,11 @@ struct AccountsPanel: View {
             }
             Spacer(minLength: 0)
             Menu {
-                Button("Codex öffnen") { model.openCodex() }.disabled(model.busy || updates.isInstalling || model.demoMode)
+                if model.selectedProvider == .codex {
+                    Button("Codex öffnen") { model.openCodex() }.disabled(model.busy || updates.isInstalling || model.demoMode)
+                } else {
+                    Link("Claude-Nutzung öffnen", destination: URL(string: "https://claude.ai/settings/usage")!)
+                }
                 if !manage {
                     Button("Konto hinzufügen …") {
                         openManage?()
@@ -402,9 +483,9 @@ private func germanDate(_ date: Date) -> String {
     date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened).locale(Locale(identifier: "de_DE")))
 }
 
-private func relativeReset(_ date: Date) -> String {
+private func relativeReset(_ date: Date, now: Date = Date()) -> String {
     let formatter = RelativeDateTimeFormatter()
     formatter.locale = Locale(identifier: "de_DE")
     formatter.unitsStyle = .full
-    return formatter.localizedString(for: date, relativeTo: Date())
+    return formatter.localizedString(for: date, relativeTo: now)
 }

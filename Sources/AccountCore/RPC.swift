@@ -87,9 +87,7 @@ struct LiveClient: AccountClient {
         guard identity.matches(local) else { throw AccountError.message("Codex liefert eine andere Kontoidentität als die gespeicherte Anmeldung.") }
         if !usage { return (identity,nil) }
         let result = try await rpc.request("account/rateLimits/read",id:2)
-        let bucket = result["rateLimitsByLimitId"]?["codex"] ?? result["rateLimits"]
-        var value = AccountUsage(fiveHourRemaining:nil,weeklyRemaining:nil,fiveHourReset:nil,weeklyReset:nil,fetchedAt:Date())
-        for key in ["primary","secondary"] { guard let window = bucket?[key], let mins = window["windowDurationMins"]?.number ?? window["durationMinutes"]?.number, let used = window["usedPercent"]?.number, let reset = window["resetsAt"]?.number, used.isFinite,reset.isFinite else { continue }; let left = max(0,min(100,100-used)); if mins == 300 { value.fiveHourRemaining = left; value.fiveHourReset = Date(timeIntervalSince1970:reset) }; if mins >= 8640 && mins <= 11520 { value.weeklyRemaining = left; value.weeklyReset = Date(timeIntervalSince1970:reset) } }
+        let value = RateLimitParser.parse(result, fetchedAt: Date())
         guard value.weeklyRemaining != nil || value.fiveHourRemaining != nil else { throw AccountError.message("Codex liefert keine nutzbaren Kontingentfenster für dieses Konto.") }
         return (identity,value)
     }
@@ -104,5 +102,32 @@ struct LiveClient: AccountClient {
         let done = try await rpc.wait(notification:"account/login/completed",seconds:600)
         guard case .bool(true) = done["success"] else { throw AccountError.message(safeMessage(AccountError.message(done["error"]?.string ?? "Die Anmeldung wurde nicht abgeschlossen."))) }
         return try Identity.credential(Data(contentsOf:home.appendingPathComponent("auth.json")))
+    }
+}
+
+enum RateLimitParser {
+    static func parse(_ result: J, fetchedAt: Date) -> AccountUsage {
+        let bucket = result["rateLimitsByLimitId"]?["codex"] ?? result["rateLimits"]
+        var value = AccountUsage(fiveHourRemaining:nil,weeklyRemaining:nil,fiveHourReset:nil,weeklyReset:nil,fetchedAt:fetchedAt)
+        for key in ["primary", "secondary"] {
+            guard let window = bucket?[key],
+                  let mins = window["windowDurationMins"]?.number ?? window["durationMinutes"]?.number,
+                  let used = window["usedPercent"]?.number,
+                  let reset = window["resetsAt"]?.number,
+                  mins.isFinite, mins > 0, used.isFinite, reset.isFinite else { continue }
+            let left = max(0, min(100, 100 - used))
+            let resetDate = Date(timeIntervalSince1970: reset)
+            if mins == 300 {
+                value.fiveHourRemaining = left
+                value.fiveHourReset = resetDate
+                value.fiveHourWindowMinutes = mins
+            }
+            if mins >= 8640 && mins <= 11520 {
+                value.weeklyRemaining = left
+                value.weeklyReset = resetDate
+                value.weeklyWindowMinutes = mins
+            }
+        }
+        return value
     }
 }

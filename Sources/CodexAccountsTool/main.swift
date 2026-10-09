@@ -5,7 +5,11 @@ import AccountCore
         do {
             let service = AccountService()
             let snapshot: AccountSnapshot
-            if CommandLine.arguments.contains("--open") { snapshot = try await service.openCodex() }
+            if CommandLine.arguments.contains("--claude") {
+                let claude = ClaudeAccountService()
+                snapshot = CommandLine.arguments.contains("--refresh") ? try await claude.refresh() : try await claude.snapshot()
+            }
+            else if CommandLine.arguments.contains("--open") { snapshot = try await service.openCodex() }
             else if CommandLine.arguments.contains("--refresh") { snapshot = try await service.refresh() }
             else { snapshot = try await service.snapshot() }
             print("Codex Konten: \(snapshot.cliPath == nil ? "CLI fehlt" : "CLI gefunden")")

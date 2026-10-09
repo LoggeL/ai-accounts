@@ -1,6 +1,6 @@
 # Codex Konten
 
-Eine native macOS-Menüleisten-App für gespeicherte Codex-Konten, verfügbare Limits und den bestätigten Kontowechsel. Die Oberfläche zeigt Kontoname und E-Mail, folgt dem hellen oder dunklen Erscheinungsbild und verwendet unter macOS 26 und neuer die nativen Glas-Bedienelemente. Mindestversion: macOS 14.
+Eine native macOS-Menüleisten-App für gespeicherte Codex- und Claude-Code-Konten, verfügbare Limits und den bestätigten Kontowechsel. Die Oberfläche zeigt Kontoname und E-Mail, folgt dem hellen oder dunklen Erscheinungsbild und verwendet unter macOS 26 und neuer die nativen Glas-Bedienelemente. Mindestversion: macOS 14.
 
 [Aktuelle Version herunterladen](https://github.com/LoggeL/codex-konten/releases/latest)
 
@@ -18,6 +18,8 @@ Die Update-Prüfung benötigt keine Codex-Zugangsdaten. Die App verwendet keine 
 
 Der Prozentwert in der Menüleiste öffnet die Kontenübersicht. Er zeigt das verbleibende Wochenlimit des aktiven Kontos oder, wenn dieses fehlt, das 5-Stunden-Limit. Während des Ladens erscheint „…“. Die Werte laden beim Start und aktualisieren sich alle fünf Minuten sowie nach einem Kontowechsel. **Aktiv** bezeichnet die tatsächlich gelesene Codex-Anmeldung. Es erscheinen nur Limits, die Codex liefert, mit verbleibendem Prozentsatz und Rücksetzzeit. Ein Wochenlimit bedeutet nicht, dass zusätzlich ein 5-Stunden-Limit verfügbar sein muss. Daten nach mehr als 15 Minuten sind als veraltet markiert; Fehler lassen vorhandene Werte sichtbar.
 
+Die dünne Marke im Limitbalken zeigt, wie viel bei gleichmäßigem Verbrauch bis zum Reset noch frei sein sollte. Darunter steht die Abweichung in Prozentpunkten (PP) als Defizit oder Reserve. Die Reichweite beruht auf dem durchschnittlichen Verbrauch seit Beginn des aktuellen Fensters und ist eine Schätzung. Sie wird mit dem zuletzt abgerufenen Verbrauch berechnet; die Soll-Marke und die verbleibende Zeit laufen im geöffneten Fenster minütlich weiter. Ohne gültige Fensterdauer und Rücksetzzeit, während der ersten drei Prozent eines Fensters, bei abgelaufenem Fenster oder nach mehr als 15 Minuten ohne neue Daten steht „Prognose nicht verfügbar“.
+
 Das Menüleistenelement bleibt nach dem Schließen der Übersicht und des Verwaltungsfensters sichtbar. Wird die bereits laufende App erneut geöffnet, erscheint die Übersicht. **Beenden** im Menü schließt die App.
 
 **Konten verwalten** öffnet ein dauerhaftes Fenster. **Konto hinzufügen** startet die Browser-Anmeldung für ein benanntes Profil. Eine laufende Anmeldung kann abgebrochen werden. Ein inaktives Konto kann erneut angemeldet oder aus der Liste entfernt werden. Die geschützte Profildatei bleibt beim Entfernen erhalten; das aktive Konto lässt sich nicht entfernen.
@@ -25,6 +27,20 @@ Das Menüleistenelement bleibt nach dem Schließen der Übersicht und des Verwal
 **Wechseln** verlangt eine Bestätigung. Codex wird regulär geschlossen, die Zielanmeldung geprüft und Codex anschließend neu geöffnet. Laufende Aufgaben werden dabei unterbrochen. Bleibt Codex nach 30 Sekunden noch geöffnet, wird die aktive Anmeldung nicht verändert. Scheitert nur der abschließende Start, steht **Codex öffnen** auch separat bereit.
 
 ## Lokale Kontodaten
+
+### Claude Code
+
+Der Claude-Reiter erkennt die bestehende Abonnement-Anmeldung über `claude auth status`. Er zeigt das 5-Stunden- und Wochenlimit, das Claude liefert, mit verbleibenden Prozenten, Reset-Zeiten und derselben Pace-Berechnung. Der Menüleistenwert folgt dem ausgewählten Reiter. Vorhandene Claude-Code-Cachewerte bleiben bei Abruffehlern sichtbar und werden nach 15 Minuten als veraltet markiert.
+
+**Konto hinzufügen** meldet ein neues Profil einmalig über `claude auth login --claudeai` im Browser an. Die App verwendet dafür ein eigenes `CLAUDE_CONFIG_DIR` und einen getrennten macOS-Schlüsselbundeintrag. Metadaten und Limitcache liegen unter `~/Library/Application Support/Codex Konten/Claude/`. Die App schreibt keine Token in Profildateien und exportiert keine Anmeldedaten.
+
+**Wechseln** verwendet die gespeicherte Anmeldung ohne erneuten Browser-Login. Abgelaufene Zugangstoken werden mit dem gespeicherten Refresh-Token erneuert. Die Zielidentität einschließlich Organisation wird vor dem Einsetzen online geprüft. Die bisherige Anmeldung wird in einem eigenen Schlüsselbundprofil erhalten. Bei fehlgeschlagener Prüfung nach dem Wechsel werden die vorherige Anmeldung und die ursprünglichen Kontometadaten wiederhergestellt. Eine vom Anbieter widerrufene Anmeldung benötigt weiterhin eine erneute Anmeldung.
+
+Schließe laufende Claude-Code-Sitzungen vor dem Wechsel. Neue Sitzungen verwenden das gewählte Konto; Gesprächsdateien und Projektkonfiguration bleiben erhalten. Die Claude-Desktop-Anmeldung wird separat verwaltet. API-Schlüssel, Cloud-Anbieter und aktive Dateifallback-Anmeldungen werden nicht umgeschaltet. Bei Bedarf fragt macOS einmalig nach Schlüsselbundzugriff; automatische Hintergrundabfragen zeigen keine solchen Dialoge. Klicke für die ausdrückliche Freigabe auf **Limits aktualisieren**.
+
+Die direkte Abfrage von Claude-Abonnementlimits verwendet die OAuth-Endpunkte des installierten Claude Code. Sie sind keine zugesicherte öffentliche API und können sich ändern. Referenzen: [Claude-Code-Anmeldung](https://code.claude.com/docs/en/authentication), [CLI-Befehle](https://code.claude.com/docs/en/cli-reference) und [Limitfelder](https://code.claude.com/docs/en/statusline).
+
+### Codex
 
 Die App verwendet den bestehenden Speicher von Codex Account Switcher unter `~/Library/Application Support/Codex Account Switcher/` sowie die aktive Dateianmeldung unter `~/.codex/auth.json`. Neue Nutzer können ihre Konten dort über die App anlegen. Profildateien werden nur lokal gelesen und geschrieben. Eigene Anmeldedateien erhalten Dateimodus `0600`, die Verzeichnisse `0700`.
 
