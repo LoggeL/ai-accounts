@@ -2,7 +2,7 @@
 
 Eine native macOS-Menüleisten-App für gespeicherte Codex- und Claude-Code-Konten, verfügbare Limits und den bestätigten Kontowechsel. Die Oberfläche zeigt Kontoname und E-Mail, folgt dem hellen oder dunklen Erscheinungsbild und verwendet unter macOS 26 und neuer die nativen Glas-Bedienelemente. Mindestversion: macOS 14.
 
-[Aktuelle Version herunterladen](https://github.com/LoggeL/codex-konten/releases/latest)
+[Aktuelle Version herunterladen](https://github.com/LoggeL/ai-accounts/releases/latest)
 
 Dieses Projekt ist unabhängig und wird nicht von OpenAI entwickelt oder unterstützt.
 
@@ -10,7 +10,7 @@ Dieses Projekt ist unabhängig und wird nicht von OpenAI entwickelt oder unterst
 
 Das ZIP aus den Releases entpacken und `AI Accounts.app` nach `/Applications` kopieren. Die derzeitigen Builds sind lokal ad hoc signiert und nicht von Apple notarisiert. Gatekeeper kann den ersten Start deshalb blockieren. Hinweise zum bewussten Öffnen einer solchen App stehen bei [Apple](https://support.apple.com/102445).
 
-Im Menü mit den drei Punkten steht **Nach Updates suchen …**. Dort lässt sich auch die automatische Update-Prüfung ein- und ausschalten. [Sparkle](https://sparkle-project.org/) lädt den öffentlichen [Update-Feed](https://raw.githubusercontent.com/LoggeL/codex-konten/main/appcast.xml) und überprüft die Ed25519-Signatur eines Update-Pakets vor der Installation. Diese Signatur ersetzt keine Apple-Notarisierung. Ein Update darf keinen laufenden Kontovorgang durch einen Neustart unterbrechen.
+Im Menü mit den drei Punkten steht **Nach Updates suchen …**. Dort lässt sich auch die automatische Update-Prüfung ein- und ausschalten. [Sparkle](https://sparkle-project.org/) lädt den öffentlichen [Update-Feed](https://raw.githubusercontent.com/LoggeL/ai-accounts/main/appcast.xml) und überprüft die Ed25519-Signatur eines Update-Pakets vor der Installation. Diese Signatur ersetzt keine Apple-Notarisierung. Ein Update darf keinen laufenden Kontovorgang durch einen Neustart unterbrechen.
 
 Die Update-Prüfung benötigt keine Codex-Zugangsdaten. Die App verwendet keine eigene Telemetrie. Update-Anfragen gehen an GitHub; GitHub sieht dabei die üblichen Verbindungsdaten einer HTTP-Anfrage.
 

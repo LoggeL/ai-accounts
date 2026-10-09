@@ -5,29 +5,29 @@
         <item>
             <title>1.2.3</title>
             <pubDate>Mon, 28 Sep 2026 16:17:21 +0200</pubDate>
-            <link>https://github.com/LoggeL/codex-konten/releases/latest</link>
+            <link>https://github.com/LoggeL/ai-accounts/releases/latest</link>
             <sparkle:version>6</sparkle:version>
             <sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/LoggeL/codex-konten/releases/download/v1.2.3/Codex-Konten-1.2.3-universal.zip" length="1727925" type="application/octet-stream" sparkle:edSignature="CBRwV8vgXXwJjXoDNXJ15c1RTDtb9njPWg/YLbSvESldF3WkB7QrqI+U0XORav8FKlEygIt1ZQ/xlXh+13jdDQ=="/>
+            <enclosure url="https://github.com/LoggeL/ai-accounts/releases/download/v1.2.3/Codex-Konten-1.2.3-universal.zip" length="1727925" type="application/octet-stream" sparkle:edSignature="CBRwV8vgXXwJjXoDNXJ15c1RTDtb9njPWg/YLbSvESldF3WkB7QrqI+U0XORav8FKlEygIt1ZQ/xlXh+13jdDQ=="/>
         </item>
         <item>
             <title>1.2.2</title>
             <pubDate>Mon, 28 Sep 2026 14:13:22 +0200</pubDate>
-            <link>https://github.com/LoggeL/codex-konten/releases/latest</link>
+            <link>https://github.com/LoggeL/ai-accounts/releases/latest</link>
             <sparkle:version>5</sparkle:version>
             <sparkle:shortVersionString>1.2.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/LoggeL/codex-konten/releases/download/v1.2.2/Codex-Konten-1.2.2-universal.zip" length="1699755" type="application/octet-stream" sparkle:edSignature="FCav9PAvHKdQhFqoHp4z2TdrCnWr6ySAicgvuPuMNLJd/j2n+bglfBWVulbJlzykqmPGvTl5rLVekDeQWjo0CQ=="/>
+            <enclosure url="https://github.com/LoggeL/ai-accounts/releases/download/v1.2.2/Codex-Konten-1.2.2-universal.zip" length="1699755" type="application/octet-stream" sparkle:edSignature="FCav9PAvHKdQhFqoHp4z2TdrCnWr6ySAicgvuPuMNLJd/j2n+bglfBWVulbJlzykqmPGvTl5rLVekDeQWjo0CQ=="/>
         </item>
         <item>
             <title>1.2.1</title>
             <pubDate>Mon, 28 Sep 2026 10:32:35 +0200</pubDate>
-            <link>https://github.com/LoggeL/codex-konten/releases/latest</link>
+            <link>https://github.com/LoggeL/ai-accounts/releases/latest</link>
             <sparkle:version>4</sparkle:version>
             <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/LoggeL/codex-konten/releases/download/v1.2.1/Codex-Konten-1.2.1-universal.zip" length="1700328" type="application/octet-stream" sparkle:edSignature="rIm6EFd8of2VYLm5Uya4+aqilbKfo71bxfU2qXCZGja2bXXWsO6v7yZEBzApg8KdUa2bhSHd4O2PfxlPs8JPAQ=="/>
+            <enclosure url="https://github.com/LoggeL/ai-accounts/releases/download/v1.2.1/Codex-Konten-1.2.1-universal.zip" length="1700328" type="application/octet-stream" sparkle:edSignature="rIm6EFd8of2VYLm5Uya4+aqilbKfo71bxfU2qXCZGja2bXXWsO6v7yZEBzApg8KdUa2bhSHd4O2PfxlPs8JPAQ=="/>
         </item>
     </channel>
 </rss>
