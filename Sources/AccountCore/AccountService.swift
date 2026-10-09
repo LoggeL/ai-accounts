@@ -19,7 +19,7 @@ public actor AccountService {
         let url = store.base.appendingPathComponent(".codex-konten.lock"); try store.check(url)
         let fd = Darwin.open(url.path,O_CREAT | O_RDWR,0o600)
         guard fd >= 0 else { throw AccountError.message("Die Kontosperre konnte nicht geöffnet werden.") }
-        guard flock(fd,LOCK_EX | LOCK_NB) == 0 else { Darwin.close(fd); throw AccountError.message("Eine andere Codex-Konten-Instanz verwendet gerade die Anmeldungen.") }
+        guard flock(fd,LOCK_EX | LOCK_NB) == 0 else { Darwin.close(fd); throw AccountError.message("Eine andere Instanz von AI Accounts verwendet gerade die Anmeldungen.") }
         lockFD = fd; busy = true
     }
     private func end() { if lockFD >= 0 { flock(lockFD,LOCK_UN); Darwin.close(lockFD); lockFD = -1 }; busy = false }

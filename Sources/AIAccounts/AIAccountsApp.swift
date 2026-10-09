@@ -21,7 +21,7 @@ private enum AppServices {
 
 @main
 @MainActor
-private enum CodexAccountsMain {
+private enum AIAccountsMain {
     private static let appDelegate = AppDelegate()
 
     static func main() {
@@ -40,7 +40,7 @@ private enum CodexAccountsMain {
     private static func makeMainMenu() -> NSMenu {
         let main = NSMenu()
         let appItem = NSMenuItem()
-        let app = NSMenu(title: "Codex Konten")
+        let app = NSMenu(title: "AI Accounts")
         app.addItem(withTitle: "Beenden", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = app
         main.addItem(appItem)
@@ -70,7 +70,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // A menu bar utility must remain resident when its last window closes.
-        ProcessInfo.processInfo.disableAutomaticTermination("Codex Konten menu bar item")
+        ProcessInfo.processInfo.disableAutomaticTermination("AI Accounts menu bar item")
         guard Bundle.main.object(forInfoDictionaryKey: "CodexAccountsHeadlessTestMode") as? Bool != true else { return }
         statusItemController = StatusItemController(model: AppServices.model, updates: AppServices.updates) { [weak self] in
             self?.openManageWindow()
@@ -355,7 +355,7 @@ enum PreviewRenderer {
         let arguments = ProcessInfo.processInfo.arguments
         let destination = arguments.firstIndex(of: "--preview").flatMap { index in
             index + 1 < arguments.count ? arguments[index + 1] : nil
-        } ?? "/tmp/codex-konten-preview.png"
+        } ?? "/tmp/ai-accounts-preview.png"
         _ = NSApplication.shared
         let model = AccountModel(preview: true, previewStress: arguments.contains("--preview-error"))
         let updates = UpdateController(preview: true)

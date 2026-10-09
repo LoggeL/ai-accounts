@@ -101,7 +101,7 @@ struct AccountsPanel: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(manage ? "Konten verwalten" : "Codex Konten")
+                Text(manage ? "Konten verwalten" : "AI Accounts")
                     .font(.system(size: 20, weight: .semibold))
                 if let active = model.accounts.first(where: \.isActive) {
                     Text("Aktiv · \(active.displayName)").lineLimit(1)

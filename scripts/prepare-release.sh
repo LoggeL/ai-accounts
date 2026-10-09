@@ -3,7 +3,7 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 source "$project_dir/config/release.env"
 release_dir="${1:-$project_dir/dist/release}"
-app_source="${2:-$project_dir/dist/Codex Konten.app}"
+app_source="${2:-$project_dir/dist/AI Accounts.app}"
 mkdir -p "$release_dir"
 release_dir="$(cd "$release_dir" && pwd)"
 app_source="$(cd "$(dirname "$app_source")" && pwd)/$(basename "$app_source")"
@@ -21,9 +21,9 @@ if info.get('CodexAccountsDemoMode') or info.get('CodexAccountsHeadlessTestMode'
     raise SystemExit('Demo-App darf nicht veröffentlicht werden.')
 PY
 codesign --verify --deep --strict "$app_source"
-architectures="$(xcrun lipo "$app_source/Contents/MacOS/CodexAccounts" -archs)"
+architectures="$(xcrun lipo "$app_source/Contents/MacOS/AIAccounts" -archs)"
 [[ " $architectures " == *" arm64 "* && " $architectures " == *" x86_64 "* ]]
-archive="Codex-Konten-$APP_VERSION-universal.zip"
+archive="AI-Accounts-$APP_VERSION-universal.zip"
 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$app_source" "$release_dir/$archive"
 if [[ -f "$project_dir/appcast.xml" ]]; then cp "$project_dir/appcast.xml" "$release_dir/appcast.xml"; fi
 "$tools_dir/generate_appcast" --account "$SPARKLE_KEY_ACCOUNT" --maximum-deltas 0 \

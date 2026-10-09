@@ -5,7 +5,7 @@ source "$project_dir/config/release.env"
 output_dir="${1:-$project_dir/dist}"
 mkdir -p "$output_dir"
 output_dir="$(cd "$output_dir" && pwd)"
-app_dir="$output_dir/Codex Konten.app"
+app_dir="$output_dir/AI Accounts.app"
 cd "$project_dir"
 
 xcrun swift build -c release --triple arm64-apple-macosx14.0
@@ -18,10 +18,10 @@ framework="$project_dir/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/mac
 # Stage a new bundle so a failed build never damages an existing package.
 staging_dir="$(mktemp -d "$output_dir/.package.XXXXXX")"
 trap 'rm -rf "$staging_dir"' EXIT
-staged_app="$staging_dir/Codex Konten.app"
+staged_app="$staging_dir/AI Accounts.app"
 mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Frameworks" "$staged_app/Contents/Resources"
-xcrun lipo -create "$arm_dir/CodexAccounts" "$intel_dir/CodexAccounts" -output "$staged_app/Contents/MacOS/CodexAccounts"
-xcrun strip -S "$staged_app/Contents/MacOS/CodexAccounts"
+xcrun lipo -create "$arm_dir/AIAccounts" "$intel_dir/AIAccounts" -output "$staged_app/Contents/MacOS/AIAccounts"
+xcrun strip -S "$staged_app/Contents/MacOS/AIAccounts"
 /usr/bin/ditto "$framework" "$staged_app/Contents/Frameworks/Sparkle.framework"
 cp LICENSE "$staged_app/Contents/Resources/LICENSE.txt"
 cp .build/artifacts/sparkle/Sparkle/LICENSE "$staged_app/Contents/Resources/Sparkle-LICENSE.txt"
@@ -30,8 +30,8 @@ import plistlib, sys
 target, version, build, public_key, feed = sys.argv[1:]
 with open(target, 'wb') as f:
     plistlib.dump({
-        'CFBundleName': 'Codex Konten', 'CFBundleDisplayName': 'Codex Konten',
-        'CFBundleIdentifier': 'de.logge.codex-konten', 'CFBundleExecutable': 'CodexAccounts',
+        'CFBundleName': 'AI Accounts', 'CFBundleDisplayName': 'AI Accounts',
+        'CFBundleIdentifier': 'de.logge.codex-konten', 'CFBundleExecutable': 'AIAccounts',
         'CFBundlePackageType': 'APPL', 'CFBundleShortVersionString': version,
         'CFBundleVersion': build, 'LSMinimumSystemVersion': '14.0', 'LSUIElement': True,
         'NSHighResolutionCapable': True, 'LSMultipleInstancesProhibited': True,
@@ -51,7 +51,7 @@ codesign --force --sign - "$staged_app/Contents/Frameworks/Sparkle.framework"
 codesign --force --sign - "$staged_app"
 plutil -lint "$staged_app/Contents/Info.plist"
 codesign --verify --deep --strict --verbose=2 "$staged_app"
-architectures="$(xcrun lipo "$staged_app/Contents/MacOS/CodexAccounts" -archs)"
+architectures="$(xcrun lipo "$staged_app/Contents/MacOS/AIAccounts" -archs)"
 [[ " $architectures " == *" arm64 "* && " $architectures " == *" x86_64 "* ]]
 # Only replace the app owned by this packaging script, after successful checks.
 if [[ -e "$app_dir" ]]; then

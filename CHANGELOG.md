@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.3.2
+
+- Die App heißt jetzt AI Accounts, passend zur Verwaltung von Codex- und Claude-Code-Konten. App-Bundle, Menüs, Kontenübersicht und Updatehinweise verwenden den neuen Namen.
+- Gespeicherte Konten, Schlüsselbundzugriffe und Einstellungen bleiben über die bestehenden Speicherpfade und die Bundle-ID erhalten.
+
 ## 1.3.1
 
 - Der bestätigte Codex-Kontowechsel beendet Codex und seine erfassten Unterprozesse sofort erzwungen. Beenden-Dialoge und blockierte Aufgaben halten den Wechsel nicht mehr auf.

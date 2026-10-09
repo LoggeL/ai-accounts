@@ -109,7 +109,7 @@ struct ClaudeKeychain: ClaudeCredentialVault {
         let status = SecItemCopyMatching(q as CFDictionary, &result)
         guard status == errSecSuccess, let data = result as? Data else {
             if status == errSecInteractionNotAllowed || status == errSecAuthFailed || status == errSecUserCanceled {
-                throw AccountError.message("Schlüsselbundzugriff fehlt. Klicke auf Aktualisieren und erlaube Codex Konten den Zugriff auf die Claude-Anmeldung.")
+                throw AccountError.message("Schlüsselbundzugriff fehlt. Klicke auf Aktualisieren und erlaube AI Accounts den Zugriff auf die Claude-Anmeldung.")
             }
             throw AccountError.message("Claude-Anmeldung im Schlüsselbund nicht verfügbar (\(status)). Bitte erneut anmelden.")
         }
@@ -260,6 +260,7 @@ public actor ClaudeAccountService {
         activeDirectory = override ?? home.appendingPathComponent(".claude")
         activeConfig = override?.appendingPathComponent(".claude.json") ?? home.appendingPathComponent(".claude.json")
         activeService = ClaudeKeychain.service(configDirectory: override)
+        // Retain the original storage path so saved profiles survive the app rename.
         store = Store(base: home.appendingPathComponent("Library/Application Support/Codex Konten/Claude"),
                       activeHome: activeDirectory)
         vault = ClaudeKeychain()

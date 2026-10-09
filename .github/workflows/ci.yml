@@ -21,4 +21,4 @@ jobs:
       - name: Package
         run: bash scripts/package-app.sh "$RUNNER_TEMP/package"
       - name: Verify bundle
-        run: codesign --verify --deep --strict --verbose=2 "$RUNNER_TEMP/package/Codex Konten.app"
+        run: codesign --verify --deep --strict --verbose=2 "$RUNNER_TEMP/package/AI Accounts.app"

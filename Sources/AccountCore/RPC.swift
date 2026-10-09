@@ -69,7 +69,7 @@ final class RPC: @unchecked Sendable {
     func request(_ method:String, id:Double, params:[String:J] = [:]) async throws -> J {
         try Task.checkCancellation(); try send(.object(["method":.string(method),"id":.number(id),"params":.object(params)])); return try await wait(id:id)
     }
-    func initialize() async throws { _ = try await request("initialize",id:0,params:["clientInfo":.object(["name":.string("codex_konten"),"title":.string("Codex Konten"),"version":.string("1.0.0")])]); try send(.object(["method":.string("initialized"),"params":.object([:])])) }
+    func initialize() async throws { _ = try await request("initialize",id:0,params:["clientInfo":.object(["name":.string("codex_konten"),"title":.string("AI Accounts"),"version":.string("1.0.0")])]); try send(.object(["method":.string("initialized"),"params":.object([:])])) }
 }
 protocol AccountClient: Sendable {
     func read(home:URL, usage:Bool) async throws -> (Identity, AccountUsage?)

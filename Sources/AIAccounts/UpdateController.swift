@@ -105,7 +105,7 @@ final class UpdateController: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
-        statusText = "Codex Konten ist aktuell."
+        statusText = "AI Accounts ist aktuell."
     }
 
     func userDidCancelDownload(_ updater: SPUUpdater) {
